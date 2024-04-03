@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 import sqlite3
-from util.db import TaskDAO
 from datetime import datetime
 
 # TODO we could probably abstract this further and separate menus into their own

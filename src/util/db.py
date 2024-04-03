@@ -1,5 +1,4 @@
 from .constants import DB_PATH
-from datetime import datetime
 import sqlite3
 from models.task import Task
 import os

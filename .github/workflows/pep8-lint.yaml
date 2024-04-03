@@ -23,6 +23,7 @@ jobs:
 
       - name: Format code with PEP8
         run: |
+          pwd
           # Replace 'src/' with the directory containing your Python files
           find src/ -name "*.py" -exec black {} +
           find src/ -name "*.py" -exec flake8 --ignore=E501 {} +

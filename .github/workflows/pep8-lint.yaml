@@ -23,5 +23,5 @@ jobs:
 
       - name: Format code with PEP8
         run: |
-          black ./src/
-          flake8 --ignore=E501 ./src/
+          find ./src/ -name "*.py" -exec black {} +
+          find ./src/ -name "*.py" -exec flake8 --ignore=E501 {} +

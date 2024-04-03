@@ -1,7 +1,8 @@
 from .constants import DB_PATH
 from datetime import datetime
 import sqlite3
-from ..models.task import Task
+from models.task import Task
+import os
 
 
 class TaskDAO:
@@ -18,11 +19,14 @@ class TaskDAO:
         """
         Connects to the database
         """
+        full_path = os.path.abspath(DB_PATH)
+        print(f"Connecting to database at: {full_path}")
         try:
             self.conn = sqlite3.connect(DB_PATH)
             self.cursor = self.conn.cursor()
         except Exception as e:
             print(f"Error connecting to the database: {e}")
+            raise e
 
     def disconnect(self):
         """

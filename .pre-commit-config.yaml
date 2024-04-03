@@ -12,3 +12,6 @@ repos:
     hooks:
       - id: autopep8
         args: ["--in-place", "--aggressive", "--aggressive", "--recursive"]
+        # by default, the autoformatter only runs on files committed
+        # to make it do all files, need to add the following field:
+        # files: .

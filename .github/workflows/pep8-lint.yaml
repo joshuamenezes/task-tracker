@@ -1,0 +1,28 @@
+name: Format code with PEP8
+
+on:
+  push:
+    branches:
+      - main  # Adjust the branch name as needed
+
+jobs:
+  format:
+    name: Format code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'  # Specify the version of Python you're using
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt  # Adjust this command based on your project's dependencies
+
+      - name: Format code with PEP8
+        run: |
+          # Replace 'src/' with the directory containing your Python files
+          find src/ -name "*.py" -exec black {} +
+          find src/ -name "*.py" -exec flake8 --ignore=E501 {} +

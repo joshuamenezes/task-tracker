@@ -8,11 +8,11 @@ cursor = conn.cursor()
 
 # Create Tasks table
 cursor.execute('''CREATE TABLE IF NOT EXISTS Tasks (
-                    id INTEGER UNSIGNED PRIMARY KEY NOT NULL,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     title TEXT NOT NULL,
                     description TEXT,
                     due_date DATETIME,
-                    priority INTEGER UNSIGNED ,
+                    priority INTEGER UNSIGNED,
                     tag TEXT
                 )''')
 conn.commit()

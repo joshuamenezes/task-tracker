@@ -235,16 +235,46 @@ class TaskManagerGUI:
         master.title("Task Manager")
         master.geometry("800x400")
 
-        # Button for adding a new task
-        ttk.Button(master, text="Add Task", command=self.add_task).pack(pady=(5, 0))
+        # Track open windows
+        self.add_task_window = None
 
-        # Buttons for task operations
-        ttk.Button(master, text="Edit Selected Task", command=self.edit_selected_task).pack(pady=3)
-        ttk.Button(master, text="Delete Selected Task", command=self.delete_selected_task).pack(pady=3)
+        # Create a frame for the buttons
+        button_frame = tk.Frame(master)
+        button_frame.pack(side=tk.TOP, fill=tk.X, pady=(5, 0))
 
-        # Sorting options
-        ttk.Button(master, text="Sort by Due Date", command=lambda: self.populate_tasks("due_date")).pack(pady=3)
-        ttk.Button(master, text="Sort by Priority", command=lambda: self.populate_tasks("priority", True)).pack(pady=3)
+        # Add Task Button
+        self.add_task_btn = tk.Button(button_frame, text="Add Task", command=self.add_task)
+        self.add_task_btn.pack(side=tk.LEFT, padx=5)
+
+        # Edit Task Button
+        self.edit_task_btn = tk.Button(button_frame, text="Edit Selected Task", command=self.edit_selected_task)
+        self.edit_task_btn.pack(side=tk.LEFT, padx=5)
+
+        # Delete Task Button
+        self.delete_task_btn = tk.Button(button_frame, text="Delete Selected Task", command=self.delete_selected_task)
+        self.delete_task_btn.pack(side=tk.LEFT, padx=5)
+
+        # Sort Tasks Button
+        self.sort_tasks_btn = tk.Button(button_frame, text="Sort by Due Date", command=lambda: self.populate_tasks(sort_by="due_date"))
+        self.sort_tasks_btn.pack(side=tk.LEFT, padx=5)
+
+        # Sort Tasks Button
+        self.sort_tasks_btn = tk.Button(button_frame, text="Sort by Priority", command=lambda: self.populate_tasks(sort_by="priority", descending=True))
+        self.sort_tasks_btn.pack(side=tk.LEFT, padx=5)
+        
+
+        # # Button for adding a new task
+        # ttk.Button(master, text="Add Task", command=self.add_task).pack(pady=(5, 0))
+
+        # # Buttons for task operations
+        # ttk.Button(master, text="Edit Selected Task", command=self.edit_selected_task).pack(pady=3)
+        # ttk.Button(master, text="Delete Selected Task", command=self.delete_selected_task).pack(pady=3)
+
+        # # Sorting options
+        # ttk.Button(master, text="Sort by Due Date", command=lambda: self.populate_tasks("due_date")).pack(pady=3)
+        # ttk.Button(master, text="Sort by Priority", command=lambda: self.populate_tasks("priority", True)).pack(pady=3)
+
+
 
         # Treeview for displaying tasks
         self.tasks_treeview = ttk.Treeview(master, columns=("ID", "Title", "Description", "Due Date", "Priority", "Tag"), show='headings')
@@ -321,34 +351,38 @@ class TaskManagerGUI:
             # Refresh the task list to show the newly added task
             self.populate_tasks()
             # Close the add task window
-            add_window.destroy()
+            self.add_task_window.destroy()
         
-        add_window = tk.Toplevel(self.master)
-        add_window.title("Add New Task")
-        
-        # Input fields
-        ttk.Label(add_window, text="Title:").grid(row=0, column=0, sticky='ew', padx=10, pady=10)
-        self.title_entry = ttk.Entry(add_window)
-        self.title_entry.grid(row=0, column=1, sticky='ew', padx=10, pady=10)
 
-        ttk.Label(add_window, text="Description:").grid(row=1, column=0, sticky='ew', padx=10, pady=10)
-        self.description_entry = tk.Text(add_window, height=4, width=30)
-        self.description_entry.grid(row=1, column=1, sticky='ew', padx=10, pady=10)
+        if not self.add_task_window or not self.add_task_window.winfo_exists():
+            self.add_task_window = tk.Toplevel(self.master)
+            self.add_task_window.title("Add New Task")
+            
+            # Input fields
+            ttk.Label(self.add_task_window, text="Title:").grid(row=0, column=0, sticky='ew', padx=10, pady=10)
+            self.title_entry = ttk.Entry(self.add_task_window)
+            self.title_entry.grid(row=0, column=1, sticky='ew', padx=10, pady=10)
 
-        ttk.Label(add_window, text="Due Date:").grid(row=2, column=0, sticky='ew', padx=10, pady=10)
-        self.due_date_entry = DateEntry(add_window)
-        self.due_date_entry.grid(row=2, column=1, sticky='ew', padx=10, pady=10)
+            ttk.Label(self.add_task_window, text="Description:").grid(row=1, column=0, sticky='ew', padx=10, pady=10)
+            self.description_entry = tk.Text(self.add_task_window, height=4, width=30)
+            self.description_entry.grid(row=1, column=1, sticky='ew', padx=10, pady=10)
 
-        ttk.Label(add_window, text="Priority:").grid(row=3, column=0, sticky='ew', padx=10, pady=10)
-        self.priority_entry = ttk.Combobox(add_window, values=[1, 2, 3, 4, 5])
-        self.priority_entry.grid(row=3, column=1, sticky='ew', padx=10, pady=10)
+            ttk.Label(self.add_task_window, text="Due Date:").grid(row=2, column=0, sticky='ew', padx=10, pady=10)
+            self.due_date_entry = DateEntry(self.add_task_window)
+            self.due_date_entry.grid(row=2, column=1, sticky='ew', padx=10, pady=10)
 
-        ttk.Label(add_window, text="Tag:").grid(row=4, column=0, sticky='ew', padx=10, pady=10)
-        self.tag_entry = ttk.Entry(add_window)
-        self.tag_entry.grid(row=4, column=1, sticky='ew', padx=10, pady=10)
-        
-        save_button = tk.Button(add_window, text="Save", command=save_new_task)
-        save_button.grid(row=5, column=0, columnspan=2)
+            ttk.Label(self.add_task_window, text="Priority:").grid(row=3, column=0, sticky='ew', padx=10, pady=10)
+            self.priority_entry = ttk.Combobox(self.add_task_window, values=[1, 2, 3, 4, 5])
+            self.priority_entry.grid(row=3, column=1, sticky='ew', padx=10, pady=10)
+
+            ttk.Label(self.add_task_window, text="Tag:").grid(row=4, column=0, sticky='ew', padx=10, pady=10)
+            self.tag_entry = ttk.Entry(self.add_task_window)
+            self.tag_entry.grid(row=4, column=1, sticky='ew', padx=10, pady=10)
+            
+            save_button = tk.Button(self.add_task_window, text="Save", command=save_new_task)
+            save_button.grid(row=5, column=0, columnspan=2)
+        else:
+            self.add_task_window.focus()
 
 
     def edit_selected_task(self):

@@ -41,9 +41,14 @@ class TaskDAO:
         """
         self.connect()
 
-        self.cursor.execute('''INSERT INTO Tasks (title, description, due_date, priority, tag)
-                                VALUES (?, ?, ?, ?, ?)''', (
-        task.title, task.description, task.due_date, task.priority, task.tag))
+        self.cursor.execute(
+            '''INSERT INTO Tasks (title, description, due_date, priority, tag)
+                                VALUES (?, ?, ?, ?, ?)''',
+            (task.title,
+             task.description,
+             task.due_date,
+             task.priority,
+             task.tag))
         self.conn.commit()
         task_id = self.cursor.lastrowid
         self.disconnect()
@@ -79,7 +84,8 @@ class TaskDAO:
         Updates a given task with the supplied information.
         """
         self.connect()
-        # Construct the UPDATE query dynamically based on the supplied parameters
+        # Construct the UPDATE query dynamically based on the supplied
+        # parameters
         update_query = "UPDATE Tasks SET"
         update_values = []
 

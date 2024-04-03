@@ -11,7 +11,7 @@ A simple GUI for organizing tasks
 
 
 ## Setup
-First, install all dependencies by running `pip install -r requirements.txt`
+First, install all dependencies by running `pip install -r requirements.txt` (ideally in a virtual environment)
 
 To setup local DB:
 * Run the `python init_db`. All data will be stored in the `task_db.sqlite` file which will be created in the `src/` directory.

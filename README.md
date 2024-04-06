@@ -23,6 +23,6 @@ To run the application:
 
 ## Demo
 
-### Authors
-Zhonqi (Eric) He
-Joshua Menezes
+## Authors
+* Zhonqi (Eric) He
+* Joshua Menezes

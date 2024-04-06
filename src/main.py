@@ -1,91 +1,112 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
+from tkcalendar import Calendar
+from tktimepicker import AnalogPicker, AnalogThemes
 import sqlite3
 from datetime import datetime
 
-# TODO we could probably abstract this further and separate menus into their own
-# files
 
 class TaskManagerGUI:
     def __init__(self, master):
-        """
-        Initialize the main GUI window.
-
-        Parameters:
-        - master: The parent Tkinter widget.
-        """
-
+        # Main window setup
         self.master = master
         master.title("Task Manager")
-        master.geometry("800x400")
+        master.geometry("1100x850")
 
-        # Track open windows
+        # Apply a style to the calendar
+        style = ttk.Style(master)
+        style.theme_use('clam') 
+        style.configure('my.Calendar.TButton', font=('Arial', 10, 'bold'), foreground='dark blue')
+        style.configure('my.Calendar.TLabel', font=('Arial', 12, 'bold'), foreground='dark red')
+        style.configure('my.Calendar.TFrame', background='light blue')
+
+        # Main layout frames
+        left_frame = tk.Frame(master)
+        right_frame = tk.Frame(master, bg='light grey')
+        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+
+        # Initialize add_task_window attribute
         self.add_task_window = None
 
-        # Create a frame for the buttons
-        button_frame = tk.Frame(master)
-        button_frame.pack(side=tk.TOP, fill=tk.X, pady=(5, 0))
+        # Calendar frame on the left
+        calendar_frame = tk.Frame(left_frame)
+        calendar_frame.grid(row=0, column=0, sticky='nsew')
+        left_frame.rowconfigure(0, weight=1)
+        left_frame.columnconfigure(0, weight=1)
 
-        # Add Task Button
+        self.calendar = Calendar(calendar_frame, font=("Arial", 14), selectmode='day', 
+                                 style='my.Calendar', locale='en_US')
+        self.calendar.pack(expand=True, fill=tk.BOTH)
+        self.calendar.bind("<<CalendarSelected>>", self.on_calendar_date_select)
+
+        # Filter frame on the left
+        filter_frame = tk.Frame(left_frame)
+        filter_frame.grid(row=1, column=0, sticky='ew')
+
+        self.tag_filter_entry = tk.Entry(filter_frame)
+        self.tag_filter_entry.pack(side=tk.LEFT, padx=10, pady=10, expand=True, fill=tk.X)
+        self.tag_filter_entry.bind('<KeyRelease>', self.on_keyrelease)  # Bind the key release event
+        self.filter_button = tk.Button(filter_frame, text="Filter by Tag", command=self.filter_by_tag)
+        self.filter_button.pack(side=tk.LEFT, padx=10, pady=10)
+
+        # Treeview for displaying tasks on the left, under the filter frame
+        self.tasks_treeview = self.create_task_treeview(left_frame)
+        self.tasks_treeview.grid(row=2, column=0, sticky='nsew', padx=10, pady=10)
+        left_frame.rowconfigure(2, weight=5)
+
+        # Treeview for displaying tasks for the selected day on the right
+        self.selected_day_tasks_treeview = self.create_task_treeview(right_frame)
+        self.selected_day_tasks_treeview.pack(expand=True, fill='both', padx=10, pady=10)
+
+        # Buttons frame on the left, below the filter frame
+        button_frame = tk.Frame(left_frame)
+        button_frame.grid(row=3, column=0, sticky='ew', pady=(0, 10))
         self.add_task_btn = tk.Button(button_frame, text="Add Task", command=self.add_task)
-        self.add_task_btn.pack(side=tk.LEFT, padx=5)
-
-        # Edit Task Button
         self.edit_task_btn = tk.Button(button_frame, text="Edit Selected Task", command=self.edit_selected_task)
-        self.edit_task_btn.pack(side=tk.LEFT, padx=5)
-
-        # Delete Task Button
         self.delete_task_btn = tk.Button(button_frame, text="Delete Selected Task", command=self.delete_selected_task)
-        self.delete_task_btn.pack(side=tk.LEFT, padx=5)
+        self.sort_by_date_btn = tk.Button(button_frame, text="Sort by Due Date", command=lambda: self.populate_tasks(sort_by="due_date"))
+        self.sort_by_priority_btn = tk.Button(button_frame, text="Sort by Priority", command=lambda: self.populate_tasks(sort_by="priority", descending=True))
 
-        # Sort Tasks Button
-        self.sort_tasks_btn = tk.Button(button_frame, text="Sort by Due Date", command=lambda: self.populate_tasks(sort_by="due_date"))
-        self.sort_tasks_btn.pack(side=tk.LEFT, padx=5)
+        # Pack buttons in order
+        for button in [self.add_task_btn, self.edit_task_btn, self.delete_task_btn, self.sort_by_date_btn, self.sort_by_priority_btn]:
+            button.pack(side=tk.LEFT, padx=5)
 
-        # Sort Tasks Button
-        self.sort_tasks_btn = tk.Button(button_frame, text="Sort by Priority", command=lambda: self.populate_tasks(sort_by="priority", descending=True))
-        self.sort_tasks_btn.pack(side=tk.LEFT, padx=5)
-        
-
-        # Treeview for displaying tasks
-        self.tasks_treeview = ttk.Treeview(master, columns=("ID", "Title", "Description", "Due Date", "Priority", "Tag"), show='headings')
-        self.tasks_treeview.column("ID", width=0, stretch=tk.NO, anchor='w')
-        self.tasks_treeview.heading("Title", text="Title")
-        self.tasks_treeview.heading("Description", text="Description")
-        self.tasks_treeview.heading("Due Date", text="Due Date")
-        self.tasks_treeview.heading("Priority", text="Priority")
-        self.tasks_treeview.heading("Tag", text="Tag")
-        
-
-        self.tasks_treeview.column("Title", width=150, anchor='w')
-        self.tasks_treeview.column("Description", width=200, anchor='w')
-        self.tasks_treeview.column("Due Date", width=100, anchor='w')
-        self.tasks_treeview.column("Priority", width=70, anchor='w')
-        self.tasks_treeview.column("Tag", width=100, anchor='w')
-
-        self.tasks_treeview.pack(expand=True, fill='both', padx=10, pady=20)
-
+        # Initial population of tasks
         self.populate_tasks()
 
+
+    def create_task_treeview(self, parent):
+        columns = ("ID", "Title", "Description", "Due Date", "Priority", "Tag")
+        treeview = ttk.Treeview(parent, columns=columns, show='headings')
+        treeview.column("ID", width=0, stretch=tk.NO, anchor='w')
+        treeview.heading("Title", text="Title")
+        treeview.heading("Description", text="Description")
+        treeview.heading("Due Date", text="Due Date")
+        treeview.heading("Priority", text="Priority")
+        treeview.heading("Tag", text="Tag")
+        for col in ["Title", "Description", "Due Date", "Priority", "Tag"]:
+            treeview.column(col, width=100, anchor='w')
+        return treeview
+
+    def on_calendar_date_select(self, event):
+        selected_date = self.calendar.selection_get()
+        self.populate_tasks_for_date(selected_date)
+
+    def populate_tasks_for_date(self, date):
+        self.selected_day_tasks_treeview.delete(*self.selected_day_tasks_treeview.get_children())
+        # Call get_tasks_by_date with only the date parameter
+        filtered_tasks = self.get_tasks_by_date(date)
+        for task in filtered_tasks:
+            self.selected_day_tasks_treeview.insert('', 'end', values=(task['id'], task['title'], task['description'], task['due_date'], task['priority'], task['tag']))
+
+
+
     def populate_tasks(self, sort_by="due_date", descending=False):
-        """
-        Populate the Treeview with tasks sorted according to the specified attribute.
-
-        Parameters:
-        - sort_by: The attribute to sort the tasks by. Defaults to "due_date".
-        - descending: Boolean indicating whether to sort in descending order. Defaults to False.
-        """
-
-        # Clear existing entries
-        for i in self.tasks_treeview.get_children():
-            self.tasks_treeview.delete(i)
-
-        # Adjust the SQL query based on the desired sort order
+        self.tasks_treeview.delete(*self.tasks_treeview.get_children())
         order = "DESC" if descending else "ASC"
         sql_query = f"SELECT * FROM Tasks ORDER BY {sort_by} {order}"
-        
-        # Fetch and display tasks sorted by the specified attribute and order
         try:
             conn = sqlite3.connect('task_db.sqlite')
             cursor = conn.cursor()
@@ -97,6 +118,29 @@ class TaskManagerGUI:
         except sqlite3.Error as e:
             messagebox.showerror("Database Error", str(e))
 
+    def on_keyrelease(self, event):
+        self.filter_by_tag()
+
+    def filter_by_tag(self):
+        tag = self.tag_filter_entry.get()
+        self.populate_tasks_with_tag(tag)
+
+    def populate_tasks_with_tag(self, tag):
+        # Clear the treeview
+        for item in self.tasks_treeview.get_children():
+            self.tasks_treeview.delete(item)
+        
+        # Filter tasks by tag and update the treeview
+        # Fetch the tasks from the database with the matching tag
+        conn = sqlite3.connect('task_db.sqlite')
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM Tasks WHERE tag LIKE ?", ('%' + tag + '%',))
+        rows = cursor.fetchall()
+        conn.close()
+        
+        # Populate the treeview with the filtered tasks
+        for row in rows:
+            self.tasks_treeview.insert("", tk.END, values=row)
 
     def add_task(self):
         """
@@ -109,6 +153,8 @@ class TaskManagerGUI:
             description = self.description_entry.get("1.0", tk.END).strip()
             due_date = self.due_date_entry.get()
             due_date = datetime.strptime(due_date, '%m/%d/%y').strftime('%Y-%m-%d')
+            time_tuple = self.time_picker.time()
+            due_time = f"{time_tuple[0]:02d}:{time_tuple[1]:02d}"
             priority = self.priority_entry.get()
             tag = self.tag_entry.get()
 
@@ -116,8 +162,11 @@ class TaskManagerGUI:
             if not title or not due_date or not priority:
                 messagebox.showerror("Error", "Title, due date, and priority are required.")
                 return
+            
+            # Combine the date and time into a single datetime object
+            due_datetime = datetime.strptime(f'{due_date} {due_time}', '%Y-%m-%d %H:%M')
 
-            # Connect to the database and insert the new task
+                # Connect to the database and insert the new task
             try:
                 conn = sqlite3.connect('task_db.sqlite')
                 cursor = conn.cursor()
@@ -125,7 +174,7 @@ class TaskManagerGUI:
                 # Insert the new task into the database
                 cursor.execute('''INSERT INTO Tasks (title, description, due_date, priority, tag)
                                 VALUES (?, ?, ?, ?, ?)''',
-                            (title, description, due_date, priority, tag))
+                            (title, description, due_datetime, priority, tag))
                 
                 conn.commit()
             except sqlite3.Error as e:
@@ -152,20 +201,24 @@ class TaskManagerGUI:
             self.description_entry = tk.Text(self.add_task_window, height=4, width=30)
             self.description_entry.grid(row=1, column=1, sticky='ew', padx=10, pady=10)
 
-            ttk.Label(self.add_task_window, text="Due Date:").grid(row=2, column=0, sticky='ew', padx=10, pady=10)
+            ttk.Label(self.add_task_window, text="Time:").grid(row=2, column=0, sticky='ew', padx=10, pady=10)
+            self.time_picker = AnalogPicker(self.add_task_window)
+            self.time_picker.grid(row=2, column=1, sticky='ew', padx=10, pady=10)
+
+            ttk.Label(self.add_task_window, text="Due Date:").grid(row=3, column=0, sticky='ew', padx=10, pady=10)
             self.due_date_entry = DateEntry(self.add_task_window)
-            self.due_date_entry.grid(row=2, column=1, sticky='ew', padx=10, pady=10)
+            self.due_date_entry.grid(row=3, column=1, sticky='ew', padx=10, pady=10)
 
-            ttk.Label(self.add_task_window, text="Priority:").grid(row=3, column=0, sticky='ew', padx=10, pady=10)
+            ttk.Label(self.add_task_window, text="Priority:").grid(row=4, column=0, sticky='ew', padx=10, pady=10)
             self.priority_entry = ttk.Combobox(self.add_task_window, values=[1, 2, 3, 4, 5])
-            self.priority_entry.grid(row=3, column=1, sticky='ew', padx=10, pady=10)
+            self.priority_entry.grid(row=4, column=1, sticky='ew', padx=10, pady=10)
 
-            ttk.Label(self.add_task_window, text="Tag:").grid(row=4, column=0, sticky='ew', padx=10, pady=10)
+            ttk.Label(self.add_task_window, text="Tag:").grid(row=5, column=0, sticky='ew', padx=10, pady=10)
             self.tag_entry = ttk.Entry(self.add_task_window)
-            self.tag_entry.grid(row=4, column=1, sticky='ew', padx=10, pady=10)
+            self.tag_entry.grid(row=5, column=1, sticky='ew', padx=10, pady=10)
             
             save_button = tk.Button(self.add_task_window, text="Save", command=save_new_task)
-            save_button.grid(row=5, column=0, columnspan=2)
+            save_button.grid(row=6, column=0, columnspan=2)
         else:
             self.add_task_window.focus()
 
@@ -283,6 +336,46 @@ class TaskManagerGUI:
         self.populate_tasks()  # Refresh the task list
 
 
+
+    def get_tasks_by_date(self, date):
+        """
+        Fetch tasks from the database for the given date.
+
+        Parameters:
+        - date: The date for which to fetch tasks. Expected to be a datetime.date instance.
+        """
+        tasks = []
+        # Format the date as a string in YYYY-MM-DD format for the SQL query
+        date_str = date.strftime('%Y-%m-%d')
+
+        try:
+            conn = sqlite3.connect('task_db.sqlite')
+            cursor = conn.cursor()
+
+            # Select tasks where the due date matches the date provided
+            cursor.execute("SELECT * FROM Tasks WHERE due_date = ?", (date_str,))
+            rows = cursor.fetchall()
+
+            # Assuming your task data is stored in a dictionary format
+            for row in rows:
+                task = {
+                    'id': row[0],
+                    'title': row[1],
+                    'description': row[2],
+                    'due_date': row[3],
+                    'priority': row[4],
+                    'tag': row[5]
+                }
+                tasks.append(task)
+
+        except sqlite3.Error as e:
+            messagebox.showerror("Database Error", str(e))
+
+        finally:
+            if conn:
+                conn.close()
+
+        return tasks
 
 
 if __name__ == "__main__":

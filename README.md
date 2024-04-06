@@ -23,6 +23,10 @@ To run the application:
 
 ## Demo
 
+https://github.com/joshuamenezes/task-tracker/assets/71187784/8cd7bb99-0843-45a9-95b6-730cae07bd12
+
+
+
 ## Authors
 * Zhonqi (Eric) He
 * Joshua Menezes

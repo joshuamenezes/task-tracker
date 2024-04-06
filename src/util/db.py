@@ -1,7 +1,6 @@
-from .constants import DB_PATH
+from .constants import Environment, DB_PATH, DB_NAME, TEST_DB_NAME
 import sqlite3
-from models.task import Task
-import os
+from ..models.task import Task
 
 
 class TaskDAO:
@@ -10,7 +9,9 @@ class TaskDAO:
     with the database.
     """
 
-    def __init__(self):
+    def __init__(self, env=Environment.PROD):
+        self.env = env
+        self.path = DB_PATH if self.env == Environment.prod else TEST_DB_NAME
         self.conn = None
         self.cursor = None
 
@@ -18,10 +19,10 @@ class TaskDAO:
         """
         Connects to the database
         """
-        full_path = os.path.abspath(DB_PATH)
-        print(f"Connecting to database at: {full_path}")
+
+        print(f"Connecting to database at: {self.path}")
         try:
-            self.conn = sqlite3.connect(DB_PATH)
+            self.conn = sqlite3.connect(self.path)
             self.cursor = self.conn.cursor()
         except Exception as e:
             print(f"Error connecting to the database: {e}")
@@ -36,7 +37,7 @@ class TaskDAO:
         except Exception as e:
             print(f"Error disconnecting from the database: {e}")
 
-    def create_task(self, task: Task) -> int:
+    def create_task(self, title, description, due_date, priority, tag) -> int:
         """
         Creates a given task in the database
         :param task: The task to create
@@ -47,11 +48,11 @@ class TaskDAO:
         self.cursor.execute(
             '''INSERT INTO Tasks (title, description, due_date, priority, tag)
                                 VALUES (?, ?, ?, ?, ?)''',
-            (task.title,
-             task.description,
-             task.due_date,
-             task.priority,
-             task.tag))
+            (title,
+             description,
+             due_date,
+             priority,
+             tag))
         self.conn.commit()
         task_id = self.cursor.lastrowid
         self.disconnect()
@@ -115,7 +116,9 @@ class TaskDAO:
         # Execute the UPDATE query
         self.cursor.execute(update_query, tuple(update_values))
         self.conn.commit()
+        rows_affected = self.cursor.rowcount
         self.disconnect()
+        return rows_affected
 
     def delete_task(self, task_id):
         """
@@ -125,4 +128,6 @@ class TaskDAO:
         self.connect()
         self.cursor.execute("DELETE FROM Tasks WHERE id = ?", (task_id,))
         self.conn.commit()
+        rows_deleted = self.cursor.rowcount
         self.disconnect()
+        return rows_deleted

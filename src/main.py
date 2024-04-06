@@ -5,6 +5,7 @@ from tkcalendar import Calendar
 from tktimepicker import AnalogPicker, AnalogThemes
 import sqlite3
 from datetime import datetime
+import init_db
 
 
 class TaskManagerGUI:
@@ -335,11 +336,9 @@ class TaskManagerGUI:
         
         self.populate_tasks()  # Refresh the task list
 
-
-
     def get_tasks_by_date(self, date):
         """
-        Fetch tasks from the database for the given date.
+        Fetch tasks from the database for the given date, ignoring the time part.
 
         Parameters:
         - date: The date for which to fetch tasks. Expected to be a datetime.date instance.
@@ -352,11 +351,10 @@ class TaskManagerGUI:
             conn = sqlite3.connect('task_db.sqlite')
             cursor = conn.cursor()
 
-            # Select tasks where the due date matches the date provided
-            cursor.execute("SELECT * FROM Tasks WHERE due_date = ?", (date_str,))
+            # Use SQLite's DATE function to compare the date part only of the datetime values
+            cursor.execute("SELECT * FROM Tasks WHERE DATE(due_date) = ?", (date_str,))
             rows = cursor.fetchall()
 
-            # Assuming your task data is stored in a dictionary format
             for row in rows:
                 task = {
                     'id': row[0],
@@ -378,7 +376,10 @@ class TaskManagerGUI:
         return tasks
 
 
+
+
 if __name__ == "__main__":
+    init_db.create_db()
     root = tk.Tk()
     gui = TaskManagerGUI(root)
     root.mainloop()

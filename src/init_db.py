@@ -1,5 +1,5 @@
 import sqlite3
-from .util.constants import *
+from util.constants import *
 import os
 
 

@@ -8,6 +8,7 @@ A simple GUI for organizing tasks
 ## Technologies Used
 * Python
 * TKinter
+* SQLite
 
 
 ## Setup
